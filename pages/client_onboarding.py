@@ -1,6 +1,7 @@
 import streamlit as st
 import anthropic
 import json
+import re
 from datetime import date
 
 # ── API client ───────────────────────────────────────────────────────────────
@@ -105,6 +106,10 @@ Generate the hypothesis set."""
         messages=[{"role": "user", "content": prompt}],
     )
     raw = message.content[0].text.strip()
+    # strip markdown fences if model adds them despite instructions
+    if raw.startswith("```"):
+        raw = re.sub(r"^```[a-z]*\n?", "", raw)
+        raw = re.sub(r"\n?```$", "", raw)
     return json.loads(raw)["hypotheses"]
 
 
