@@ -377,6 +377,17 @@ elif step == 3:
                 st.session_state.hypotheses = hypotheses
             except Exception as e:
                 st.error(f"Hypothesis generation failed: {e}")
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("← Back to Research", use_container_width=True):
+                        st.session_state.step = 2
+                        st.session_state.hypotheses = {}
+                        st.rerun()
+                with col2:
+                    if st.button("Start Over", use_container_width=True):
+                        for key in ["step", "ctx", "research", "hypotheses"]:
+                            st.session_state[key] = 1 if key == "step" else {}
+                        st.rerun()
                 st.stop()
     else:
         hypotheses = st.session_state.hypotheses
