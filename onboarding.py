@@ -1,12 +1,11 @@
 import streamlit as st
 import anthropic
-import requests
 import json
 from datetime import date
 
 st.set_page_config(page_title="Client Onboarding", page_icon="🚀", layout="centered")
 
-# ── API clients ─────────────────────────────────────────────────────────────
+# ── API client ───────────────────────────────────────────────────────────────
 
 def get_anthropic():
     key = st.secrets.get("ANTHROPIC_API_KEY", "")
@@ -15,51 +14,41 @@ def get_anthropic():
         st.stop()
     return anthropic.Anthropic(api_key=key)
 
-def get_perplexity_key():
-    key = st.secrets.get("PERPLEXITY_API_KEY", "")
-    if not key:
-        st.error("PERPLEXITY_API_KEY not set in Streamlit secrets.")
-        st.stop()
-    return key
+# ── Market research via Claude ────────────────────────────────────────────────
 
-# ── Perplexity market research ───────────────────────────────────────────────
+RESEARCH_SYSTEM = """You are a B2B market analyst. Research the target vertical's pain points
+with depth and specificity. Use concrete numbers, workflow descriptions, tool names, and
+failure modes. No generalities. No fluff. Each section should teach something actionable."""
 
-def run_perplexity_query(query: str, api_key: str) -> str:
-    resp = requests.post(
-        "https://api.perplexity.ai/chat/completions",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={
-            "model": "sonar",
-            "messages": [{"role": "user", "content": query}],
-            "max_tokens": 800,
-        },
-        timeout=45,
+def run_research_query(label: str, prompt: str, client: anthropic.Anthropic) -> str:
+    message = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=600,
+        system=RESEARCH_SYSTEM,
+        messages=[{"role": "user", "content": prompt}],
     )
-    resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"]
+    return message.content[0].text.strip()
 
 
 def build_research_queries(ctx: dict) -> list[tuple[str, str]]:
     vertical = ctx["vertical"]
     icp_role = ctx["icp_roles"]
-    product = ctx["product_oneliner"]
     problem = ctx["problem_solved"]
 
     return [
         ("Workflow pain", (
-            f"What is the specific day-to-day workflow for {icp_role} at {vertical} companies "
-            f"when they handle {problem}? What tools do they use? Where do those tools fail? "
+            f"Describe the specific day-to-day workflow for {icp_role} at {vertical} companies "
+            f"when they handle {problem}. What tools do they use? Where do those tools fail? "
             f"How long does each step take? Give concrete examples and data points, not generalities."
         )),
-        ("Tool / database gaps", (
-            f"How well do existing tools cover {vertical} companies in the {icp_role} space? "
-            f"What percentage of the market do standard databases miss? "
-            f"Why do these companies fall through the cracks? Give specific numbers."
+        ("Tool gaps", (
+            f"How well do existing tools serve {vertical} companies trying to solve {problem}? "
+            f"What do those tools miss? Why do companies in this space keep falling back on manual work? "
+            f"What are the most common workarounds? Give specific numbers where possible."
         )),
         ("Scaling problems", (
             f"What happens when {vertical} companies try to scale {problem} beyond the early stage? "
-            f"What breaks? What are real-world failure stories? How do they work around it? "
-            f"What does it cost them?"
+            f"What breaks? What are the real failure modes? How do they work around it and at what cost?"
         )),
     ]
 
@@ -337,14 +326,14 @@ elif step == 2:
     st.caption("Running 3 research queries via Perplexity to map pain points in the target vertical.")
 
     if not st.session_state.research:
-        px_key = get_perplexity_key()
+        client = get_anthropic()
         queries = build_research_queries(ctx)
         research = {}
 
         for label, query in queries:
             with st.spinner(f"Researching: {label}..."):
                 try:
-                    result = run_perplexity_query(query, px_key)
+                    result = run_research_query(label, query, client)
                     research[label] = result
                     with st.expander(f"✅ {label}", expanded=True):
                         st.markdown(result)
