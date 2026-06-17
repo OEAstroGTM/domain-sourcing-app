@@ -6,16 +6,14 @@ st.set_page_config(
     layout="centered",
 )
 
-domain_sourcing = st.Page(
-    "pages/domain_sourcing.py",
-    title="Domain Sourcing",
-    icon="🌐",
-)
-client_onboarding = st.Page(
-    "pages/client_onboarding.py",
-    title="Client Onboarding",
-    icon="📋",
-)
+pages = [
+    st.Page("pages/1_client_brief.py",        title="Client Brief",          icon="📋"),
+    st.Page("pages/2_domain_sourcing.py",      title="Domain Sourcing",       icon="🌐"),
+    st.Page("pages/3_market_research.py",      title="Market Research",       icon="🔍"),
+    st.Page("pages/4_hypothesis_set.py",       title="Hypothesis Set",        icon="💡"),
+    st.Page("pages/5_email_qa.py",             title="Email QA",              icon="✅"),
+    st.Page("pages/6_response_simulation.py",  title="Response Simulation",   icon="🎭"),
+]
 
-pg = st.navigation([domain_sourcing, client_onboarding])
+pg = st.navigation(pages)
 pg.run()
